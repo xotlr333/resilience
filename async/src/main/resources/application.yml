@@ -1,0 +1,56 @@
+spring:
+  application:
+    name: async-service
+  data:
+    mongodb:
+      uri: mongodb://${MONGODB_USER:mongodb}:${MONGODB_PASSWORD:mongodb}@${MONGODB_HOST:localhost}:${MONGODB_PORT:27017}/${MONGODB_DB:telecomdb}?authSource=admin
+
+server:
+  port: 8082
+
+azure:
+  eventgrid:
+    endpoint: ${EVENTGRID_ENDPOINT}
+    key: ${EVENTGRID_KEY}
+    dlq-topic: ${EVENTGRID_DLQ_TOPIC}
+
+resilience4j:
+  circuitbreaker:
+    configs:
+      default:
+        slidingWindowSize: ${CB_SLIDING_WINDOW_SIZE:10}
+        failureRateThreshold: ${CB_FAILURE_RATE_THRESHOLD:50}
+        waitDurationInOpenState: ${CB_WAIT_DURATION_IN_OPEN:60000}
+        permittedNumberOfCallsInHalfOpenState: ${CB_PERMITTED_CALLS_IN_HALF_OPEN:3}
+  retry:
+    configs:
+      default:
+        maxAttempts: ${RETRY_COUNT:3}
+        waitDuration: ${RETRY_FIRST_BACKOFF:5000}
+        enableExponentialBackoff: true
+        exponentialBackoffMultiplier: ${RETRY_FACTOR:2}
+  quartz:
+    job-store-type: memory
+    properties:
+      org.quartz.threadPool.threadCount: 5
+
+point:
+  retry:
+    interval: ${RETRY_INTERVAL:30000}  # 30초마다 재시도
+    max-count: ${RETRY_MAX_COUNT:3}    # 최대 재시도 횟수
+
+services:
+  point:
+    url: ${POINT_SERVICE_URL:http://point-svc}
+
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html
+    tags-sorter: alpha
+    operations-sorter: method
+    doc-expansion: none
+  api-docs:
+    path: /api-docs
+  show-actuator: true
+  default-consumes-media-type: application/json
+  default-produces-media-type: application/json

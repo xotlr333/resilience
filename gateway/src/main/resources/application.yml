@@ -1,0 +1,84 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: gateway-service
+  data:
+    mongodb:
+      uri: mongodb://${MONGODB_USER:mongodb}:${MONGODB_PASSWORD:mongodb}@${MONGODB_HOST:localhost}:${MONGODB_PORT:27017}/${MONGODB_DB:telecomdb}?authSource=admin
+
+  cloud:
+    gateway:
+      routes:
+        - id: point_service
+          uri: http://point-svc
+          predicates:
+            - Path=/api/points/**
+          filters:
+            - name: CircuitBreakerFilter
+            - name: RetryFilter
+              args:
+                retries: ${RETRY_COUNT:3}
+                statuses: ${RETRY_STATUSES:BAD_GATEWAY,SERVICE_UNAVAILABLE}
+                methods: ${RETRY_METHODS:GET,POST}
+                backoff:
+                  firstBackoff: ${RETRY_FIRST_BACKOFF:5000}ms
+                  maxBackoff: ${RETRY_MAX_BACKOFF:20000}ms
+                  factor: ${RETRY_FACTOR:2}
+                  basedOnPreviousValue: ${RETRY_BASED_ON_PREVIOUS:false}
+resilience4j:
+  bulkhead:
+    configs:
+      default:
+        maxConcurrentCalls: ${BULKHEAD_DEFAULT_MAX_CONCURRENT_CALLS:50}
+        maxWaitDuration: ${BULKHEAD_DEFAULT_MAX_WAIT_DURATION:500}ms
+      mart:
+        maxConcurrentCalls: ${BULKHEAD_MART_MAX_CONCURRENT_CALLS:100}
+        maxWaitDuration: ${BULKHEAD_MART_MAX_WAIT_DURATION:500}ms
+      convenience:
+        maxConcurrentCalls: ${BULKHEAD_CONVENIENCE_MAX_CONCURRENT_CALLS:200}
+        maxWaitDuration: ${BULKHEAD_CONVENIENCE_MAX_WAIT_DURATION:300}ms
+      online:
+        maxConcurrentCalls: ${BULKHEAD_ONLINE_MAX_CONCURRENT_CALLS:50}
+        maxWaitDuration: ${BULKHEAD_ONLINE_MAX_WAIT_DURATION:1000}ms
+  ratelimiter:
+    configs:
+      mart:
+        limitForPeriod: ${RATE_MART_LIMIT:1000}
+        limitRefreshPeriod: ${RATE_MART_REFRESH:1}s
+        timeoutDuration: ${RATE_MART_TIMEOUT:5}s
+      convenience:
+        limitForPeriod: ${RATE_CONVENIENCE_LIMIT:2000}
+        limitRefreshPeriod: ${RATE_CONVENIENCE_REFRESH:1}s
+        timeoutDuration: ${RATE_CONVENIENCE_TIMEOUT:2}s
+      online:
+        limitForPeriod: ${RATE_ONLINE_LIMIT:500}
+        limitRefreshPeriod: ${RATE_ONLINE_REFRESH:1}s
+        timeoutDuration: ${RATE_ONLINE_TIMEOUT:10}s
+
+  circuitbreaker:
+    configs:
+      default:
+        slidingWindowSize: ${CB_SLIDING_WINDOW_SIZE:10}
+        failureRateThreshold: ${CB_FAILURE_RATE_THRESHOLD:50}
+        waitDurationInOpenState: ${CB_WAIT_DURATION_IN_OPEN:30000}
+        permittedNumberOfCallsInHalfOpenState: ${CB_PERMITTED_CALLS_IN_HALF_OPEN:5}
+azure:
+  eventgrid:
+    endpoint: ${EVENTGRID_ENDPOINT}
+    key: ${EVENTGRID_KEY}
+    dlq-topic: ${EVENTGRID_DLQ_TOPIC}
+
+# Swagger UI 설정
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html
+    tags-sorter: alpha
+    operations-sorter: method
+    doc-expansion: none
+  api-docs:
+    path: /api-docs
+  show-actuator: true
+  default-consumes-media-type: application/json
+  default-produces-media-type: application/json
