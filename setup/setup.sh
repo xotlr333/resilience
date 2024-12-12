@@ -91,7 +91,7 @@ setup_environment() {
 
     # Event Grid IPs
     PROXY_IP="4.217.249.140"
-    ASYNC_PUBIP="20.39.201.68"
+    ASYNC_PUBIP="20.214.112.125"
     SUB_ENDPOINT=""
 
     LOG_FILE="deployment_${NAME}.log"
@@ -734,7 +734,7 @@ setup_event_grid_subscriber() {
             --included-event-types CircuitBreakerOpened RetryExhausted ProcessingFailed \
             --max-delivery-attempts 3 \
             --event-ttl 1440 \
-            --deadletter-endpoint "${storage_id}/blobServices/default/containers/deadletter" \
+            --deadletter-endpoint "${storage_id}/blobServices/default/containers/$DEAD_LETTER" \
             --output none
         check_error "Event Grid Subscriber 생성 실패"
     fi
