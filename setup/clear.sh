@@ -93,6 +93,25 @@ cleanup_event_grid() {
     fi
 }
 
+cleanup_storage() {
+   log "Storage Account 리소스 정리 중..."
+
+   # Dead Letter Container 삭제
+   az storage container delete \
+       --name $DEAD_LETTER \
+       --account-name $STORAGE_ACCOUNT \
+       2>/dev/null || true
+
+   # Storage Account 삭제
+   az storage account delete \
+       --name $STORAGE_ACCOUNT \
+       --resource-group $RESOURCE_GROUP \
+       --yes \
+       2>/dev/null || true
+
+   log "Storage Account 리소스 정리 완료"
+}
+
 # Kubernetes 리소스 삭제
 cleanup_kubernetes() {
     log "Kubernetes 리소스 삭제 중..."
@@ -129,6 +148,9 @@ main() {
 
     # Event Grid 리소스 삭제
     cleanup_event_grid
+
+    # Storage Account 리소스 정리
+    cleanup_storage
 
     # Kubernetes 리소스 삭제
     cleanup_kubernetes

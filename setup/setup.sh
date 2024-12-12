@@ -85,6 +85,10 @@ setup_environment() {
     ASYNC_EVENTGRID_ENDPOINT=""
     ASYNC_EVENTGRID_KEY=""
 
+   # Event Grid
+   STORAGE_ACCOUNT="${USERID}storage"
+   DEAD_LETTER="${USERID}deadletter"
+
     # Event Grid IPs
     PROXY_IP="4.217.249.140"
     ASYNC_PUBIP="20.39.201.68"
@@ -182,9 +186,25 @@ setup_common_resources() {
     ASYNC_EVENTGRID_ENDPOINT=$(az eventgrid topic show --name $ASYNC_TOPIC -g $RESOURCE_GROUP --query "endpoint" -o tsv)
     ASYNC_EVENTGRID_KEY=$(az eventgrid topic key list --name $ASYNC_TOPIC -g $RESOURCE_GROUP --query "key1" -o tsv)
 
+    # Storage Account가 없으면 생성
+    STORAGE_EXISTS=$(az storage account show \
+        --name $STORAGE_ACCOUNT \
+        --resource-group $RESOURCE_GROUP \
+        --query name \
+        --output tsv 2>/dev/null)
+
+    if [ -z "$STORAGE_EXISTS" ]; then
+        az storage account create \
+            --name $STORAGE_ACCOUNT \
+            --resource-group $RESOURCE_GROUP \
+            --location $LOCATION \
+            --sku Standard_LRS
+        check_error "Storage Account 생성 실패"
+    fi
+
     # Storage Account connection string 가져오기
     local storage_conn_str=$(az storage account show-connection-string \
-        --name dggastorage \
+        --name $STORAGE_ACCOUNT \
         --resource-group $RESOURCE_GROUP \
         --query connectionString \
         --output tsv)
@@ -192,14 +212,14 @@ setup_common_resources() {
 
     # deadletter 컨테이너 존재 여부 확인
     local container_exists=$(az storage container exists \
-        --name deadletter \
+        --name $DEAD_LETTER \
         --connection-string "$storage_conn_str" \
         --query "exists" -o tsv)
 
     if [ "$container_exists" != "true" ]; then
         # deadletter 컨테이너 생성
         az storage container create \
-            --name deadletter \
+            --name $DEAD_LETTER \
             --connection-string "$storage_conn_str" \
             --output none
         check_error "Storage container 생성 실패"
@@ -685,7 +705,7 @@ setup_event_grid_subscriber() {
 
     # Storage Account ID 가져오기
     local storage_id=$(az storage account show \
-        --name dggastorage \
+        --name $STORAGE_ACCOUNT \
         --resource-group $RESOURCE_GROUP \
         --query id \
         --output tsv)
